@@ -12,6 +12,7 @@
 #include "loguru.cpp"
 #include <unordered_map>
 #include <utility>
+#include <random>
 
 
 
@@ -27,9 +28,23 @@
 const	int		TAG_ITEM_STAND = 15278;
 std::unordered_map<std::string, Stand> data;
 std::unordered_map<std::string, Stand> standmapping;
+std::vector<Stand> standsUAE;
+std::vector<Stand> standsPAX;
+std::vector<Stand> standsCARGO;
+std::vector<Stand> standsLOWCOST;
+std::vector<Stand> standsVIP;
+std::vector<Stand> standsGA;
+std::vector<Stand> standsOverflow;
 
 const   int     TAG_FUNC_EDIT = 15;
 const int TAG_FUNC_ASSIGN_POPUP = 16;
+const int TAG_FUNC_ASSIGN_AUTO = 17;
+const int TAG_FUNC_ASSIGN_CARGO = 18;
+const int TAG_FUNC_ASSIGN_PAX = 19;
+const int TAG_FUNC_ASSIGN_UAE = 31854;
+const int TAG_FUNC_ASSIGN_LOWCOST = 20;
+const int TAG_FUNC_ASSIGN_VIP = 21;
+const int TAG_FUNC_ASSIGN_GA = 23;
 const int TAG_FUNC_MANUAL_FINISH = 22;
 const int TAG_FUNC_CLEAR = 264;
 const double TOL = 0.02;
@@ -95,6 +110,42 @@ CStandAssigner::CStandAssigner(void)
 		data.insert(temp2);
 	}
 	LOG_F(INFO, "Stand file read without issues!");
+	for (auto stand : data)
+	{
+		auto code = stand.second.mAirlinecode;
+		if (code == "UAE")
+		{
+			standsUAE.push_back(stand.second);
+			continue;
+		}
+		if (code == "PAX")
+		{
+			standsPAX.push_back(stand.second);
+			continue;
+		}
+			
+		if (code == "CARGO" || code == "CLC")
+			standsCARGO.push_back(stand.second);
+		if (code == "LWC" || code == "CLC")
+			standsLOWCOST.push_back(stand.second);
+		if (code == "GA")
+		{
+			standsGA.push_back(stand.second);
+			continue;
+		}
+		if (code == "VIP")
+		{
+			standsVIP.push_back(stand.second);
+			continue;
+		}
+		if (code == "ALL")
+		{
+			standsOverflow.push_back(stand.second);
+			continue;
+		}
+			
+
+	}
 }
 
 
@@ -134,6 +185,25 @@ void CStandAssigner::OnGetTagItem(EuroScopePlugIn::CFlightPlan FlightPlan,
 		{
 			auto temp = found->second.number;
 			strcpy(sItemString, temp.c_str());
+		}
+		else
+		{
+			auto fpdata = FlightPlan.GetFlightPlanData();
+			std::string remarks = fpdata.GetRemarks();
+			std::regex re = std::regex(R"(\/STAND([A-Z]\d{1,2}))");
+			std::smatch match;
+			if (std::regex_search(remarks, match, re))
+			{
+				std::string stand = match.str(1);
+				auto found = data.find(stand);
+				if ( found != data.end())
+				{
+					found->second.isAssigned = true;
+					std::pair<std::string, Stand> temp(FlightPlan.GetCallsign(), found->second);
+					standmapping.insert(temp);
+				}
+			}
+				
 		}
 				
 	}
@@ -203,8 +273,77 @@ inline void CStandAssigner::OnFunctionCall(int FunctionId, const char * sItemStr
 		std::string input = sItemString;
 		try {
 			data.at(input).isAssigned = true;
+			std::string code = data.at(input).mAirlinecode;
+			auto it = data.at(input);
+			if (code == "UAE")
+			{
+				for (auto &temp : standsUAE)
+				{
+					if (temp.number == it.number)
+						temp.isAssigned = true;
+				}
+			}
+			if (code == "PAX")
+			{
+				for (auto &temp : standsPAX)
+				{
+					if (temp.number == it.number)
+						temp.isAssigned = true;
+				}
+			}
+
+			if (code == "CARGO" || code == "CLC")
+			{
+				for (auto &temp : standsCARGO)
+				{
+					if (temp.number == it.number)
+						temp.isAssigned = true;
+				}
+			}
+
+			if (code == "LWC" || code == "CLC")
+
+			{
+				for (auto &temp : standsLOWCOST)
+				{
+					if (temp.number == it.number)
+						temp.isAssigned = true;
+				}
+			}
+			if (code == "GA")
+			{
+				for (auto &temp : standsGA)
+				{
+					if (temp.number == it.number)
+						temp.isAssigned = true;
+				}
+			}
+			if (code == "VIP")
+			{
+				for (auto &temp : standsVIP)
+				{
+					if (temp.number == it.number)
+						temp.isAssigned = true;
+				}
+			}
+			if (code == "ALL")
+			{
+				for (auto &temp : standsOverflow)
+				{
+					if (temp.number == it.number)
+						temp.isAssigned = true;
+				}
+			}
 			std::pair<std::string, Stand> temp2(fp.GetCallsign(), data.at(input));
 			standmapping.insert(temp2);
+			auto fpdata = fp.GetFlightPlanData();
+			std::string remarks = fpdata.GetRemarks();
+			std::smatch match;
+			if(std::regex_search(remarks,match, std::regex(R"(\/STAND[A-Z]\d{1,2})")))
+				return;
+			remarks += "/STAND" + input;
+			fpdata.SetRemarks(remarks.c_str());
+			fpdata.AmendFlightPlan();
 			break;
 		}
 		catch (std::exception e)
@@ -222,17 +361,168 @@ inline void CStandAssigner::OnFunctionCall(int FunctionId, const char * sItemStr
 			{
 				temp2->second.isAssigned = false;
 			}
+			auto fpdata = fp.GetFlightPlanData();
 			standmapping.erase(found);
+			std::string remarks = fpdata.GetRemarks();
+			remarks = std::regex_replace(remarks, std::regex(R"(\/STAND[A-Z]\d{1,2})"), "");
+			fpdata.SetRemarks(remarks.c_str());
+			fpdata.AmendFlightPlan();
 			
 		}
+		break;
 	}
+	case TAG_FUNC_ASSIGN_POPUP:
+	{
+		OpenPopupList(Area, "Assign Stand", 1);
+
+
+		//AddPopupListElement("Assign Auto", "", TAG_FUNC_ASSIGN_AUTO);
+		AddPopupListElement("Assign UAE", "", TAG_FUNC_ASSIGN_UAE);
+		AddPopupListElement("Assign CARGO", "", TAG_FUNC_ASSIGN_CARGO);
+		AddPopupListElement("Assign PAX", "", TAG_FUNC_ASSIGN_PAX);
+		AddPopupListElement("Assign LOWCOST", "", TAG_FUNC_ASSIGN_LOWCOST);
+		AddPopupListElement("Assign VIP", "", TAG_FUNC_ASSIGN_VIP);
+		AddPopupListElement("Assign GA", "", TAG_FUNC_ASSIGN_GA);
+		AddPopupListElement("Clear", "", TAG_FUNC_CLEAR);
+		break;
+	}
+	case TAG_FUNC_ASSIGN_AUTO:
+	{
+		break;
+	}
+	case TAG_FUNC_ASSIGN_CARGO:
+	{
+		auto found = standmapping.find(fp.GetCallsign());
+		if (found != standmapping.end())
+			break;
+		auto size = determineAircraftCat(fp);
+		auto stand = extractRandomStand(standsCARGO, size);
+		if (stand.number == "Z00")
+			break;
+		data.at(stand.number).isAssigned = true;
+		std::pair<std::string, Stand> temp(fp.GetCallsign(), stand);
+		standmapping.insert(temp);
+		for (auto &temp : standsCARGO)
+		{
+			if (temp.number == stand.number)
+				temp.isAssigned = true;
+		}
+		for (auto &temp : standsLOWCOST)
+		{
+			if (temp.number == stand.number)
+				temp.isAssigned = true;
+		}
+		break;
+	}
+	case TAG_FUNC_ASSIGN_PAX:
+	{
+		auto found = standmapping.find(fp.GetCallsign());
+		if (found != standmapping.end())
+			break;
+		auto size = determineAircraftCat(fp);
+		auto stand = extractRandomStand(standsPAX, size);
+		if (stand.number == "Z00")
+			break;
+		data.at(stand.number).isAssigned = true;
+		std::pair<std::string, Stand> temp(fp.GetCallsign(), stand);
+		standmapping.insert(temp);
+		for (auto &temp : standsPAX)
+		{
+			if (temp.number == stand.number)
+				temp.isAssigned = true;
+		}
+		break;
+	}
+	case TAG_FUNC_ASSIGN_UAE:
+	{
+		auto found = standmapping.find(fp.GetCallsign());
+		if (found != standmapping.end())
+			break;
+		auto size = determineAircraftCat(fp);
+		auto stand = extractRandomStand(standsUAE, size);
+		if (stand.number == "Z00")
+			break;
+		data.at(stand.number).isAssigned = true;
+		std::pair<std::string, Stand> temp(fp.GetCallsign(), stand);
+		standmapping.insert(temp);
+		for (auto &temp : standsUAE)
+		{
+			if (temp.number == stand.number)
+				temp.isAssigned = true;
+		}
+		break;
+	}
+	case TAG_FUNC_ASSIGN_VIP:
+	{
+		auto found = standmapping.find(fp.GetCallsign());
+		if (found != standmapping.end())
+			break;
+		auto size = determineAircraftCat(fp);
+		auto stand = extractRandomStand(standsVIP, size);
+		if (stand.number == "Z00")
+			break;
+		data.at(stand.number).isAssigned = true;
+		std::pair<std::string, Stand> temp(fp.GetCallsign(), stand);
+		standmapping.insert(temp);
+		for (auto &temp : standsVIP)
+		{
+			if (temp.number == stand.number)
+				temp.isAssigned = true;
+		}
+		break;
+	}
+	case TAG_FUNC_ASSIGN_LOWCOST:
+	{
+		auto found = standmapping.find(fp.GetCallsign());
+		if (found != standmapping.end())
+			break;
+		auto size = determineAircraftCat(fp);
+		auto stand = extractRandomStand(standsLOWCOST, size);
+		if (stand.number == "Z00")
+			break;
+		data.at(stand.number).isAssigned = true;
+		std::pair<std::string, Stand> temp(fp.GetCallsign(), stand);
+		standmapping.insert(temp);
+		for (auto &temp : standsCARGO)
+		{
+			if (temp.number == stand.number)
+				temp.isAssigned = true;
+		}
+		for (auto &temp : standsLOWCOST)
+		{
+			if (temp.number == stand.number)
+				temp.isAssigned = true;
+		}
+		break;
+	}
+	case TAG_FUNC_ASSIGN_GA:
+	{
+		auto found = standmapping.find(fp.GetCallsign());
+		if (found != standmapping.end())
+			break;
+		auto size = determineAircraftCat(fp);
+		auto stand = extractRandomStand(standsGA, size);
+		if (stand.number == "Z00")
+			break;
+		data.at(stand.number).isAssigned = true;
+		std::pair<std::string, Stand> temp(fp.GetCallsign(), stand);
+		standmapping.insert(temp);
+		for (auto &temp : standsGA)
+		{
+			if (temp.number == stand.number)
+				temp.isAssigned = true;
+		}
+		break;
+	}
+
 	}// switch by the function ID
 }
 void CStandAssigner::cleanupStands()
 {
+	
 	for (auto& it : data)
 	{
-		
+
 		if (!it.second.isEmpty)
 		{
 			auto first = RadarTargetSelectFirst();
@@ -245,15 +535,134 @@ void CStandAssigner::cleanupStands()
 				{
 					goto outer;
 				}
-					
+
 				temp = RadarTargetSelectNext(temp);
 			}
 			it.second.isEmpty = true;
 		}
+		if (it.second.isAssigned)
+		{
+			auto first = FlightPlanSelectFirst();
+			std::string cs = first.GetCallsign();
+			auto found = standmapping.find(cs);
+			if (found != standmapping.end())
+				if(it.second.number == found->second.number)
+					goto outer;
+			auto temp = FlightPlanSelectNext(first);
+			while (temp.IsValid())
+			{
+				cs = temp.GetCallsign();
+				auto found = standmapping.find(cs);
+				if (found != standmapping.end())
+					if (it.second.number == found->second.number)
+						goto outer;
+				temp = FlightPlanSelectNext(temp);
+			}
+			it.second.isAssigned = false;
+			std::string code = it.second.mAirlinecode;
+			if (code == "UAE")
+			{
+				for (auto &temp : standsUAE)
+				{
+					if (temp.number == it.second.number)
+						temp.isAssigned = false;
+				}
+			}
+			if (code == "PAX")
+			{
+				for (auto &temp : standsPAX)
+				{
+					if (temp.number == it.second.number)
+						temp.isAssigned = false;
+				}
+			}
+
+			if (code == "CARGO" || code == "CLC")
+			{
+				for (auto &temp : standsCARGO)
+				{
+					if (temp.number == it.second.number)
+						temp.isAssigned = false;
+				}
+			}
+
+			if (code == "LWC" || code == "CLC")
+
+			{
+				for (auto &temp : standsLOWCOST)
+				{
+					if (temp.number == it.second.number)
+						temp.isAssigned = false;
+				}
+			}
+			if (code == "GA")
+			{
+				for (auto &temp : standsGA)
+				{
+					if (temp.number == it.second.number)
+						temp.isAssigned = false;
+				}
+			}
+			if (code == "VIP")
+			{
+				for (auto &temp : standsVIP)
+				{
+					if (temp.number == it.second.number)
+						temp.isAssigned = false;
+				}
+			}
+			if (code == "ALL")
+			{
+				for (auto &temp : standsOverflow)
+				{
+					if (temp.number == it.second.number)
+						temp.isAssigned = false;
+				}
+			}
+			
+		}
 	outer:
 		continue;
 	}
+	
+	
  }
+Stand CStandAssigner::extractRandomStand(std::vector<Stand> stands, char size)
+{
+	
+	std::shuffle(std::begin(stands), std::end(stands), std::random_device());
+	for (auto stand : stands)
+	{
+		if (!stand.isAssigned && stand.isEmpty && stand.isInFlytampa && stand.mSize >= size)
+		{
+			return stand;
+		}
+
+	}
+	std::shuffle(std::begin(standsOverflow), std::end(standsOverflow), std::random_device());
+	for (auto stand : standsOverflow)
+	{
+		if (!stand.isAssigned && stand.isEmpty && stand.isInFlytampa && stand.mSize >= size)
+		{
+			return stand;
+		}
+	}
+	DisplayUserMessage("StandAssigner", "OMDB", "Error assigning stand", true, true, true, true, true);
+	return Stand("Z00", 0, 0, "ALL", "", "", "F", "yes");
+}
+char CStandAssigner::determineAircraftCat(EuroScopePlugIn::CFlightPlan fp)
+{
+	char wtc = fp.GetFlightPlanData().GetAircraftWtc();
+	std::string actype = fp.GetFlightPlanData().GetAircraftFPType();
+	if (wtc == 'L')
+		return 'B';
+	if (wtc == 'J')
+		return 'F';
+	if (wtc == 'H')
+		return 'E';
+	if (wtc == 'M')
+		return 'C';
+}
 
 
 

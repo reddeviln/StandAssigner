@@ -138,6 +138,8 @@ public:
 	inline  virtual bool    OnCompileCommand(const char * sCommandLine);
 	inline  virtual void    OnTimer(int Counter);
 	void cleanupStands();
+	Stand extractRandomStand(std::vector<Stand> stands, char size);
+	char determineAircraftCat(EuroScopePlugIn::CFlightPlan);
 
 };
 
