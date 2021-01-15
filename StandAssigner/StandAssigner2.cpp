@@ -472,6 +472,14 @@ inline void CStandAssigner::OnFunctionCall(int FunctionId, const char * sItemStr
 			if (temp.number == stand.number)
 				temp.isAssigned = true;
 		}
+		auto fpdata = fp.GetFlightPlanData();
+		std::string remarks = fpdata.GetRemarks();
+		std::smatch match;
+		if (std::regex_search(remarks, match, std::regex(R"(\/STAND[A-Z]\d{1,2})")))
+			return;
+		remarks += "/STAND" + stand.number;
+		fpdata.SetRemarks(remarks.c_str());
+		fpdata.AmendFlightPlan();
 		break;
 	}
 	case TAG_FUNC_ASSIGN_PAX:
@@ -491,6 +499,14 @@ inline void CStandAssigner::OnFunctionCall(int FunctionId, const char * sItemStr
 			if (temp.number == stand.number)
 				temp.isAssigned = true;
 		}
+		auto fpdata = fp.GetFlightPlanData();
+		std::string remarks = fpdata.GetRemarks();
+		std::smatch match;
+		if (std::regex_search(remarks, match, std::regex(R"(\/STAND[A-Z]\d{1,2})")))
+			return;
+		remarks += "/STAND" + stand.number;
+		fpdata.SetRemarks(remarks.c_str());
+		fpdata.AmendFlightPlan();
 		break;
 	}
 	case TAG_FUNC_ASSIGN_UAE:
@@ -510,6 +526,14 @@ inline void CStandAssigner::OnFunctionCall(int FunctionId, const char * sItemStr
 			if (temp.number == stand.number)
 				temp.isAssigned = true;
 		}
+		auto fpdata = fp.GetFlightPlanData();
+		std::string remarks = fpdata.GetRemarks();
+		std::smatch match;
+		if (std::regex_search(remarks, match, std::regex(R"(\/STAND[A-Z]\d{1,2})")))
+			return;
+		remarks += "/STAND" + stand.number;
+		fpdata.SetRemarks(remarks.c_str());
+		fpdata.AmendFlightPlan();
 		break;
 	}
 	case TAG_FUNC_ASSIGN_VIP:
@@ -529,6 +553,14 @@ inline void CStandAssigner::OnFunctionCall(int FunctionId, const char * sItemStr
 			if (temp.number == stand.number)
 				temp.isAssigned = true;
 		}
+		auto fpdata = fp.GetFlightPlanData();
+		std::string remarks = fpdata.GetRemarks();
+		std::smatch match;
+		if (std::regex_search(remarks, match, std::regex(R"(\/STAND[A-Z]\d{1,2})")))
+			return;
+		remarks += "/STAND" + stand.number;
+		fpdata.SetRemarks(remarks.c_str());
+		fpdata.AmendFlightPlan();
 		break;
 	}
 	case TAG_FUNC_ASSIGN_LOWCOST:
@@ -553,6 +585,14 @@ inline void CStandAssigner::OnFunctionCall(int FunctionId, const char * sItemStr
 			if (temp.number == stand.number)
 				temp.isAssigned = true;
 		}
+		auto fpdata = fp.GetFlightPlanData();
+		std::string remarks = fpdata.GetRemarks();
+		std::smatch match;
+		if (std::regex_search(remarks, match, std::regex(R"(\/STAND[A-Z]\d{1,2})")))
+			return;
+		remarks += "/STAND" + stand.number;
+		fpdata.SetRemarks(remarks.c_str());
+		fpdata.AmendFlightPlan();
 		break;
 	}
 	case TAG_FUNC_ASSIGN_GA:
@@ -572,6 +612,14 @@ inline void CStandAssigner::OnFunctionCall(int FunctionId, const char * sItemStr
 			if (temp.number == stand.number)
 				temp.isAssigned = true;
 		}
+		auto fpdata = fp.GetFlightPlanData();
+		std::string remarks = fpdata.GetRemarks();
+		std::smatch match;
+		if (std::regex_search(remarks, match, std::regex(R"(\/STAND[A-Z]\d{1,2})")))
+			return;
+		remarks += "/STAND" + stand.number;
+		fpdata.SetRemarks(remarks.c_str());
+		fpdata.AmendFlightPlan();
 		break;
 	}
 
