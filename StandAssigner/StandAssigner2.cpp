@@ -232,6 +232,66 @@ void CStandAssigner::OnRadarTargetPositionUpdate(EuroScopePlugIn::CRadarTarget r
 		auto stand = getStandOfAircraft(position);
 		if (stand != "-1") {
 			data.at(stand).isEmpty = false;
+			auto mystand = data.at(stand);
+			auto code = data.at(stand).mAirlinecode;
+			if (code == "UAE")
+			{
+				for (auto &temp : standsUAE)
+				{
+					if (temp.number == mystand.number)
+						temp.isEmpty = false;
+				}
+			}
+			if (code == "PAX")
+			{
+				for (auto &temp : standsPAX)
+				{
+					if (temp.number == mystand.number)
+						temp.isEmpty = false;
+				}
+			}
+
+			if (code == "CARGO" || code == "CLC")
+			{
+				for (auto &temp : standsCARGO)
+				{
+					if (temp.number == mystand.number)
+						temp.isEmpty = false;
+				}
+			}
+
+			if (code == "LWC" || code == "CLC")
+			{
+				for (auto &temp : standsLOWCOST)
+				{
+					if (temp.number == mystand.number)
+						temp.isEmpty = false;
+				}
+			}
+			if (code == "GA")
+			{
+				for (auto &temp : standsGA)
+				{
+					if (temp.number == mystand.number)
+						temp.isEmpty = false;
+				}
+			}
+			if (code == "VIP")
+			{
+				for (auto &temp : standsVIP)
+				{
+					if (temp.number == mystand.number)
+						temp.isEmpty = false;
+				}
+			}
+			if (code == "ALL")
+			{
+				for (auto &temp : standsOverflow)
+				{
+					if (temp.number == mystand.number)
+						temp.isEmpty = false;
+				}
+			}
 		}
 	}
 }
@@ -648,7 +708,9 @@ Stand CStandAssigner::extractRandomStand(std::vector<Stand> stands, char size)
 		}
 	}
 	DisplayUserMessage("StandAssigner", "OMDB", "Error assigning stand", true, true, true, true, true);
-	return Stand("Z00", 0, 0, "ALL", "", "", "F", "yes");
+	auto errorval = standsOverflow.at(0);
+	errorval.number = "Z00";
+	return errorval;
 }
 char CStandAssigner::determineAircraftCat(EuroScopePlugIn::CFlightPlan fp)
 {
