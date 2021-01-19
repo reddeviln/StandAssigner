@@ -199,7 +199,10 @@ void CStandAssigner::OnGetTagItem(EuroScopePlugIn::CFlightPlan FlightPlan,
 			auto found2 = data.find(found->second.number);
 			if (found2 != data.end())
 			{
-				if (!found2->second.isEmpty)
+				auto aircraftposition = FlightPlan.GetCorrelatedRadarTarget().GetPosition().GetPosition();
+				if (!FlightPlan.GetCorrelatedRadarTarget().IsValid())
+					break;
+				if (!found2->second.isEmpty && aircraftposition.DistanceTo(found2->second.position)>=TOL)
 				{
 					*pColorCode = EuroScopePlugIn::TAG_COLOR_EMERGENCY;
 				}
