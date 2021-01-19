@@ -28,6 +28,7 @@
 const	int		TAG_ITEM_STAND = 15278;
 std::unordered_map<std::string, Stand> data;
 std::unordered_map<std::string, Stand> standmapping;
+std::unordered_map<std::string, std::string> callsignmap;
 std::vector<Stand> standsUAE;
 std::vector<Stand> standsPAX;
 std::vector<Stand> standsCARGO;
@@ -97,8 +98,8 @@ CStandAssigner::CStandAssigner(void)
 
 
 	LOG_F(INFO, "Everything registered. Ready to go!");
-
-
+	std::string dir2;
+	dir2 = dir + "CallsignMap.csv";
 	dir += "OMDB.csv";
 	io::CSVReader<8, io::trim_chars<' '>, io::no_quote_escape<','>> in(dir);
 	in.read_header(io::ignore_extra_column, "Standnumber", "latitude", "longitude", "airlinecode", "neighbor1", "neighbor2","size","flytampa");
@@ -110,6 +111,16 @@ CStandAssigner::CStandAssigner(void)
 		data.insert(temp2);
 	}
 	LOG_F(INFO, "Stand file read without issues!");
+	//reading callsign mapping
+	io::CSVReader<2, io::trim_chars<' '>, io::no_quote_escape<','>> in2(dir2);
+	in2.read_header(io::ignore_extra_column, "Callsign", "ToAssign");
+	std::string Callsign, ToAssign;
+	while (in2.read_row(Callsign, ToAssign))
+	{
+		std::pair<std::string, std::string> temp3(Callsign, ToAssign);
+		callsignmap.insert(temp3);
+	}
+	LOG_F(INFO, "Callsign mapping parsed successfully.");
 	for (auto stand : data)
 	{
 		auto code = stand.second.mAirlinecode;
@@ -185,6 +196,14 @@ void CStandAssigner::OnGetTagItem(EuroScopePlugIn::CFlightPlan FlightPlan,
 		{
 			auto temp = found->second.number;
 			strcpy(sItemString, temp.c_str());
+			auto found2 = data.find(found->second.number);
+			if (found2 != data.end())
+			{
+				if (!found2->second.isEmpty)
+				{
+					*pColorCode = EuroScopePlugIn::TAG_COLOR_EMERGENCY;
+				}
+			}
 		}
 		else
 		{
@@ -436,7 +455,7 @@ inline void CStandAssigner::OnFunctionCall(int FunctionId, const char * sItemStr
 		OpenPopupList(Area, "Assign Stand", 1);
 
 
-		//AddPopupListElement("Assign Auto", "", TAG_FUNC_ASSIGN_AUTO);
+		AddPopupListElement("Assign Auto", "", TAG_FUNC_ASSIGN_AUTO);
 		AddPopupListElement("Assign UAE", "", TAG_FUNC_ASSIGN_UAE);
 		AddPopupListElement("Assign CARGO", "", TAG_FUNC_ASSIGN_CARGO);
 		AddPopupListElement("Assign PAX", "", TAG_FUNC_ASSIGN_PAX);
@@ -448,10 +467,86 @@ inline void CStandAssigner::OnFunctionCall(int FunctionId, const char * sItemStr
 	}
 	case TAG_FUNC_ASSIGN_AUTO:
 	{
+		std::string callsign = fp.GetCallsign();
+		std::string remarks = fp.GetFlightPlanData().GetRemarks();
+		if (remarks.find("Cargo") != std::string::npos|| remarks.find("CARGO") != std::string::npos|| remarks.find("cargo")!= std::string::npos)
+		{
+			std::string logstring;
+			logstring = "Cargo Callsign through remarks for " + callsign + ", because remarks are "+remarks;
+			LOG_F(INFO, logstring.c_str());
+			goto CARGO;
+		}
+		if (callsign.length() < 3)
+			break;
+		std::string op = callsign.substr(0, 3);
+		std::regex number = std::regex(R"(.*\d.*)");
+		std::smatch match;
+		auto test = fp.GetFlightPlanData().GetPlanType();
+		if (std::regex_search(op, match, number)|| strcmp(test,"V") == 0)
+		{
+			std::string logstring;
+			logstring = "Assigning GA stand for " + callsign + " because we found a number in the first three characters of the callsign or the flightrules are VFR.";
+			LOG_F(INFO, logstring.c_str());
+			goto GA;
+		}
+		auto found = callsignmap.find(op);
+		if (found != callsignmap.end())
+		{
+			auto assignment = found->second;
+			if (assignment == "UAE")
+			{
+				std::regex uaecargo = std::regex(R"(UAE9\d{3})");
+				std::smatch match;
+				if (std::regex_search(callsign, match, uaecargo))
+				{
+					std::string logstring;
+					logstring = "Detected SkyCargo for Callsign " + callsign;
+					LOG_F(INFO, logstring.c_str());
+					goto CARGO;
+				}
+				std::string logstring;
+				logstring = "Detected Emirates Callsign " + callsign;
+				LOG_F(INFO, logstring.c_str());
+				goto UAE;
+			}
+			if (assignment == "LWC")
+			{
+				std::string logstring;
+				logstring = "Detected lowcost Callsign " + callsign;
+				LOG_F(INFO, logstring.c_str());
+				goto LWC;
+			}
+			if (assignment == "VIP")
+			{
+				std::string logstring;
+				logstring = "Detected VIP Callsign " + callsign;
+				LOG_F(INFO, logstring.c_str());
+				goto VIP;
+			}
+			if (assignment == "CARGO")
+			{
+				std::string logstring;
+				logstring = "Detected Cargo Callsign " + callsign;
+				LOG_F(INFO, logstring.c_str());
+				goto CARGO;
+			}
+			if (assignment == "GA")
+			{
+				std::string logstring;
+				logstring = "Detected GA Callsign " + callsign;
+				LOG_F(INFO, logstring.c_str());
+				goto GA;
+			}
+		}
+		std::string logstring;
+		logstring = "Could not find any rule to assign " + callsign +" so we treated it as a normal internatinal carrier.";
+		LOG_F(INFO, logstring.c_str());
+		goto PAX;
 		break;
 	}
 	case TAG_FUNC_ASSIGN_CARGO:
 	{
+		CARGO:
 		auto found = standmapping.find(fp.GetCallsign());
 		if (found != standmapping.end())
 			break;
@@ -484,6 +579,7 @@ inline void CStandAssigner::OnFunctionCall(int FunctionId, const char * sItemStr
 	}
 	case TAG_FUNC_ASSIGN_PAX:
 	{
+		PAX:
 		auto found = standmapping.find(fp.GetCallsign());
 		if (found != standmapping.end())
 			break;
@@ -511,6 +607,7 @@ inline void CStandAssigner::OnFunctionCall(int FunctionId, const char * sItemStr
 	}
 	case TAG_FUNC_ASSIGN_UAE:
 	{
+		UAE:
 		auto found = standmapping.find(fp.GetCallsign());
 		if (found != standmapping.end())
 			break;
@@ -538,6 +635,7 @@ inline void CStandAssigner::OnFunctionCall(int FunctionId, const char * sItemStr
 	}
 	case TAG_FUNC_ASSIGN_VIP:
 	{
+		VIP:
 		auto found = standmapping.find(fp.GetCallsign());
 		if (found != standmapping.end())
 			break;
@@ -565,6 +663,7 @@ inline void CStandAssigner::OnFunctionCall(int FunctionId, const char * sItemStr
 	}
 	case TAG_FUNC_ASSIGN_LOWCOST:
 	{
+		LWC:
 		auto found = standmapping.find(fp.GetCallsign());
 		if (found != standmapping.end())
 			break;
@@ -597,6 +696,7 @@ inline void CStandAssigner::OnFunctionCall(int FunctionId, const char * sItemStr
 	}
 	case TAG_FUNC_ASSIGN_GA:
 	{
+		GA:
 		auto found = standmapping.find(fp.GetCallsign());
 		if (found != standmapping.end())
 			break;
