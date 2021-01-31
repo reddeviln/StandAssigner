@@ -25,7 +25,7 @@
 #define MY_PLUGIN_VIEW      ""
 
 
-const	int		TAG_ITEM_STAND = 15278;
+const	int		TAG_ITEM_STAND = 1548915;
 std::unordered_map<std::string, Stand> data;
 std::unordered_map<std::string, Stand> standmapping;
 std::unordered_map<std::string, std::string> callsignmap;
@@ -37,16 +37,16 @@ std::vector<Stand> standsVIP;
 std::vector<Stand> standsGA;
 std::vector<Stand> standsOverflow;
 
-const   int     TAG_FUNC_EDIT = 15;
-const int TAG_FUNC_ASSIGN_POPUP = 16;
-const int TAG_FUNC_ASSIGN_AUTO = 17;
-const int TAG_FUNC_ASSIGN_CARGO = 18;
-const int TAG_FUNC_ASSIGN_PAX = 19;
+const   int     TAG_FUNC_EDIT = 423;
+const int TAG_FUNC_ASSIGN_POPUP = 456456;
+const int TAG_FUNC_ASSIGN_AUTO = 412;
+const int TAG_FUNC_ASSIGN_CARGO = 4578;
+const int TAG_FUNC_ASSIGN_PAX = 456;
 const int TAG_FUNC_ASSIGN_UAE = 31854;
-const int TAG_FUNC_ASSIGN_LOWCOST = 20;
-const int TAG_FUNC_ASSIGN_VIP = 21;
-const int TAG_FUNC_ASSIGN_GA = 23;
-const int TAG_FUNC_MANUAL_FINISH = 22;
+const int TAG_FUNC_ASSIGN_LOWCOST = 3458;
+const int TAG_FUNC_ASSIGN_VIP = 4868;
+const int TAG_FUNC_ASSIGN_GA = 486;
+const int TAG_FUNC_MANUAL_FINISH = 2345;
 const int TAG_FUNC_CLEAR = 264;
 const double TOL = 0.02;
 
@@ -231,6 +231,7 @@ void CStandAssigner::OnGetTagItem(EuroScopePlugIn::CFlightPlan FlightPlan,
 	}
 		
 }
+
 bool CStandAssigner::OnCompileCommand(const char * sCommandLine)
 {
 	if (std::strcmp(sCommandLine, ".showstands") == 0)
@@ -244,8 +245,9 @@ bool CStandAssigner::OnCompileCommand(const char * sCommandLine)
 		DisplayUserMessage("Occupied Stands", "OMDB", out.c_str() , true, true, true, true, true);
 		return true;
 	}
-
+	return false;
 }
+
 void CStandAssigner::OnRadarTargetPositionUpdate(EuroScopePlugIn::CRadarTarget rt)
 {
 	if (rt.IsValid())
@@ -728,6 +730,7 @@ inline void CStandAssigner::OnFunctionCall(int FunctionId, const char * sItemStr
 
 	}// switch by the function ID
 }
+
 void CStandAssigner::cleanupStands()
 {
 	
@@ -838,6 +841,7 @@ void CStandAssigner::cleanupStands()
 	
 	
  }
+
 Stand CStandAssigner::extractRandomStand(std::vector<Stand> stands, char size)
 {
 	
@@ -863,6 +867,7 @@ Stand CStandAssigner::extractRandomStand(std::vector<Stand> stands, char size)
 	errorval.number = "Z00";
 	return errorval;
 }
+
 char CStandAssigner::determineAircraftCat(EuroScopePlugIn::CFlightPlan fp)
 {
 	char wtc = fp.GetFlightPlanData().GetAircraftWtc();
