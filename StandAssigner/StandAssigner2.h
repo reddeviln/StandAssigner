@@ -5,6 +5,7 @@
 #include <vector>
 #include "csv.h"
 #include "loguru.hpp"
+#include <filesystem>
 #define INT_PART 4
 #define DEC_PART 3
 
@@ -15,6 +16,7 @@ class Stand
 public:
 	std::string number;
 	double mlat, mLong;
+	std::string mICAO;
 	EuroScopePlugIn::CPosition position;
 	std::string mAirlinecode;
 	std::string mNeighbor1;
@@ -23,7 +25,7 @@ public:
 	bool isAssigned = false;
 	char mSize;
 	bool isInFlytampa = false;
-	Stand(std::string StandNumber, std::string lat, std::string Long, std::string airlinecode, std::string neighbor1, std::string neighbor2, std::string size, std::string flytampa)
+	Stand(std::string StandNumber, std::string lat, std::string Long, std::string airlinecode, std::string neighbor1, std::string neighbor2, std::string size, std::string flytampa, std::string airport)
 	{
 		number = StandNumber;
 		mlat = Str2LatLong(lat);
@@ -33,7 +35,7 @@ public:
 		position.m_Longitude = mLong;
 		mNeighbor1 = neighbor1;
 		mNeighbor2 = neighbor2;
-		
+		mICAO = airport;
 		mSize = size.at(0);
 		mAirlinecode = airlinecode;
 		if (flytampa == "yes")
@@ -137,9 +139,14 @@ public:
 
 	inline  virtual bool    OnCompileCommand(const char * sCommandLine);
 	inline  virtual void    OnTimer(int Counter);
+	inline  virtual void    OnControllerDisconnect(EuroScopePlugIn::CController Controller);
 	void cleanupStands();
-	Stand extractRandomStand(std::vector<Stand> stands, char size);
+	Stand extractRandomStand(std::vector<Stand> stands, char size, std::string icao);
 	char determineAircraftCat(EuroScopePlugIn::CFlightPlan);
+
+	void readStandFile(std::string dir, std::string airport);
+
+	void readCallsignFile(std::string dir, std::string airport);
 
 };
 
