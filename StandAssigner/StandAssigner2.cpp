@@ -38,6 +38,7 @@ std::unordered_map<std::string, std::vector<Stand>> standsVIP;
 std::unordered_map<std::string, std::vector<Stand>> standsGA;
 std::unordered_map<std::string, std::vector<Stand>> standsOverflow;
 std::unordered_map<std::string, std::vector<Stand>> standsABY;
+std::unordered_map<std::string, std::vector<Stand>> standsETD;
 std::unordered_map<std::string, std::vector<Stand>> standsCargoSpecial;
 std::vector<std::string> activeAirports;
 const   int     TAG_FUNC_EDIT = 423;
@@ -52,6 +53,7 @@ const int TAG_FUNC_ASSIGN_GA = 486;
 const int TAG_FUNC_ASSIGN_ABY = 2342;
 const int TAG_FUNC_ASSIGN_CARGO2 = 23230;
 const int TAG_FUNC_MANUAL_FINISH = 2345;
+const int TAG_FUNC_ASSIGN_ETD = 568978;
 const int TAG_FUNC_CLEAR = 264;
 const double TOL = 0.02;
 
@@ -155,6 +157,7 @@ CStandAssigner::CStandAssigner(void)
 		std::vector<Stand> thisstandsCARGOspec;
 		std::vector<Stand> thisstandsLOWCOST;
 		std::vector<Stand> thisstandsGA;
+		std::vector<Stand> thisstandsETD;
 		std::vector<Stand> thisstandsVIP;
 		std::vector<Stand> thisstandsOverflow;
 		for (auto stand : found->second)
@@ -173,6 +176,11 @@ CStandAssigner::CStandAssigner(void)
 			if (code == "PAX")
 			{
 				thisstandsPAX.push_back(stand.second);
+				continue;
+			}
+			if (code == "ETD")
+			{
+				thisstandsETD.push_back(stand.second);
 				continue;
 			}
 
@@ -221,6 +229,8 @@ CStandAssigner::CStandAssigner(void)
 		standsVIP.insert(temp8);
 		std::pair<std::string, std::vector<Stand>> temp9(airport, thisstandsOverflow);
 		standsOverflow.insert(temp9);
+		std::pair<std::string, std::vector<Stand>> temp10(airport, thisstandsETD);
+		standsETD.insert(temp10);
 		
 	}
 	
@@ -294,10 +304,11 @@ void CStandAssigner::OnGetTagItem(EuroScopePlugIn::CFlightPlan FlightPlan,
 			std::string remarks = fpdata.GetRemarks();
 			auto dest = fpdata.GetDestination();
 			std::regex reOMDB = std::regex(R"(\/STAND([A-Z]\d{1,2}))");
-			std::regex reOMSJ = std::regex(R"(\/STAND\d{1,2}[A-Z]?)");
-			
+			std::regex reOMSJ = std::regex(R"(\/STAND(\d{1,2}[A-Z]?))");
+			std::regex reOMAA1 = std::regex(R"(\/STAND(\d{1,3}))");
+			std::regex reOMAA2 = std::regex(R"(\/STAND(GA))");
 			std::smatch match;
-			if ((std::regex_search(remarks, match, reOMDB) && strcmp(dest, "OMDB")==0) || (std::regex_search(remarks, match, reOMSJ) && strcmp(dest, "OMSJ") == 0))
+			if ((std::regex_search(remarks, match, reOMDB) && strcmp(dest, "OMDB")==0) || (std::regex_search(remarks, match, reOMSJ) && strcmp(dest, "OMSJ") == 0) || ((std::regex_search(remarks,match, reOMAA1) || std::regex_search(remarks, match, reOMAA2)) && strcmp(dest, "OMAA") == 0))
 			{
 				std::string stand = match.str(1);
 				auto found2 = data.find(icao);
@@ -360,6 +371,14 @@ void CStandAssigner::OnRadarTargetPositionUpdate(EuroScopePlugIn::CRadarTarget r
 			if (code == "UAE")
 			{
 				for (auto &temp : standsUAE.at(icao))
+				{
+					if (temp.number == mystand.number)
+						temp.isEmpty = false;
+				}
+			}
+			if (code == "ETD")
+			{
+				for (auto &temp : standsETD.at(icao))
 				{
 					if (temp.number == mystand.number)
 						temp.isEmpty = false;
@@ -490,6 +509,14 @@ inline void CStandAssigner::OnFunctionCall(int FunctionId, const char * sItemStr
 					temp.isAssigned = true;
 			}
 		}
+		if (code == "ETD" && standsETD.find(dest) != standsETD.end())
+		{
+			for (auto &temp : standsETD.at(dest))
+			{
+				if (temp.number == it.number)
+					temp.isAssigned = true;
+			}
+		}
 		if ((code == "PAX" || code == "ABY") && standsPAX.find(dest) != standsPAX.end())
 		{
 			for (auto &temp : standsPAX.at(dest))
@@ -578,6 +605,8 @@ inline void CStandAssigner::OnFunctionCall(int FunctionId, const char * sItemStr
 			return;
 		if (strcmp(dest, "OMSJ") == 0 && std::regex_search(remarks, match, std::regex(R"(\/STAND\d{1,2}[A-Z]?)")))
 			return;
+		if (strcmp(dest, "OMAA") == 0 && (std::regex_search(remarks, match, std::regex(R"(\/STAND\d{1,3})")) || std::regex_search(remarks, match, std::regex(R"(\/STANDGA)"))))
+			return;
 		remarks += "/STAND" + input;
 		fpdata.SetRemarks(remarks.c_str());
 		fpdata.AmendFlightPlan();
@@ -615,6 +644,12 @@ inline void CStandAssigner::OnFunctionCall(int FunctionId, const char * sItemStr
 			remarks = std::regex_replace(remarks, std::regex(R"(\/STAND[A-Z]\d{1,2})"), "");
 		else if(strcmp(dest, "OMSJ") == 0)
 			remarks = std::regex_replace(remarks, std::regex(R"(\/STAND\d{1,2}[A-Z]?)"), "");
+		else if (strcmp(dest, "OMAA") == 0)
+		{
+			remarks = std::regex_replace(remarks, std::regex(R"(\/STAND\d{1,3})"), "");
+			remarks = std::regex_replace(remarks, std::regex(R"(\/STANDGA)"), "");
+		}
+		
 		fpdata.SetRemarks(remarks.c_str());
 		fpdata.AmendFlightPlan();
 			
@@ -634,6 +669,8 @@ inline void CStandAssigner::OnFunctionCall(int FunctionId, const char * sItemStr
 			AddPopupListElement("Assign ABY", "", TAG_FUNC_ASSIGN_ABY);
 			AddPopupListElement("Assign SQC/GEC/UPS", "", TAG_FUNC_ASSIGN_CARGO2);
 		}
+		if (strcmp(dest, "OMAA") == 0)
+			AddPopupListElement("Assign ETD", "", TAG_FUNC_ASSIGN_ETD);
 		AddPopupListElement("Assign CARGO", "", TAG_FUNC_ASSIGN_CARGO);
 		AddPopupListElement("Assign PAX", "", TAG_FUNC_ASSIGN_PAX);
 		AddPopupListElement("Assign LOWCOST", "", TAG_FUNC_ASSIGN_LOWCOST);
@@ -695,6 +732,13 @@ inline void CStandAssigner::OnFunctionCall(int FunctionId, const char * sItemStr
 				logstring = "Detected lowcost Callsign " + callsign;
 				LOG_F(INFO, logstring.c_str());
 				goto LWC;
+			}
+			if (assignment == "ETD")
+			{
+				std::string logstring;
+				logstring = "Detected Etihad Callsign " + callsign;
+				LOG_F(INFO, logstring.c_str());
+				goto ETD;
 			}
 			if (assignment == "ABY")
 			{
@@ -785,6 +829,8 @@ inline void CStandAssigner::OnFunctionCall(int FunctionId, const char * sItemStr
 			return;
 		if (strcmp(icao, "OMSJ") == 0 && std::regex_search(remarks, match, std::regex(R"(\/STAND\d{1,2}[A-Z]?)")))
 			return;
+		if (strcmp(icao, "OMAA") == 0 && (std::regex_search(remarks, match, std::regex(R"(\/STAND\d{1,3})")) || std::regex_search(remarks, match, std::regex(R"(\/STANDGA)"))))
+			return;
 		remarks += "/STAND" + stand.number;
 		fpdata.SetRemarks(remarks.c_str());
 		fpdata.AmendFlightPlan();
@@ -836,6 +882,8 @@ inline void CStandAssigner::OnFunctionCall(int FunctionId, const char * sItemStr
 			return;
 		if (strcmp(icao, "OMSJ") == 0 && std::regex_search(remarks, match, std::regex(R"(\/STAND\d{1,2}[A-Z]?)")))
 			return;
+		if (strcmp(icao, "OMAA") == 0 && (std::regex_search(remarks, match, std::regex(R"(\/STAND\d{1,3})")) || std::regex_search(remarks, match, std::regex(R"(\/STANDGA)"))))
+			return;
 		remarks += "/STAND" + stand.number;
 		fpdata.SetRemarks(remarks.c_str());
 		fpdata.AmendFlightPlan();
@@ -881,6 +929,8 @@ inline void CStandAssigner::OnFunctionCall(int FunctionId, const char * sItemStr
 		if (strcmp(icao, "OMDB") == 0 && std::regex_search(remarks, match, std::regex(R"(\/STAND[A-Z]\d{1,2})")))
 			return;
 		if (strcmp(icao, "OMSJ") == 0 && std::regex_search(remarks, match, std::regex(R"(\/STAND\d{1,2}[A-Z]?)")))
+			return;
+		if (strcmp(icao, "OMAA") == 0 && (std::regex_search(remarks, match, std::regex(R"(\/STAND\d{1,3})")) || std::regex_search(remarks, match, std::regex(R"(\/STANDGA)"))))
 			return;
 		remarks += "/STAND" + stand.number;
 		fpdata.SetRemarks(remarks.c_str());
@@ -939,6 +989,8 @@ inline void CStandAssigner::OnFunctionCall(int FunctionId, const char * sItemStr
 			return;
 		if (strcmp(icao, "OMSJ") == 0 && std::regex_search(remarks, match, std::regex(R"(\/STAND\d{1,2}[A-Z]?)")))
 			return;
+		if (strcmp(icao, "OMAA") == 0 && (std::regex_search(remarks, match, std::regex(R"(\/STAND\d{1,3})")) || std::regex_search(remarks, match, std::regex(R"(\/STANDGA)"))))
+			return;
 		remarks += "/STAND" + stand.number;
 		fpdata.SetRemarks(remarks.c_str());
 		fpdata.AmendFlightPlan();
@@ -984,6 +1036,8 @@ inline void CStandAssigner::OnFunctionCall(int FunctionId, const char * sItemStr
 		if (strcmp(icao, "OMDB") == 0 && std::regex_search(remarks, match, std::regex(R"(\/STAND[A-Z]\d{1,2})")))
 			return;
 		if (strcmp(icao, "OMSJ") == 0 && std::regex_search(remarks, match, std::regex(R"(\/STAND\d{1,2}[A-Z]?)")))
+			return;
+		if (strcmp(icao, "OMAA") == 0 && (std::regex_search(remarks, match, std::regex(R"(\/STAND\d{1,3})")) || std::regex_search(remarks, match, std::regex(R"(\/STANDGA)"))))
 			return;
 		remarks += "/STAND" + stand.number;
 		fpdata.SetRemarks(remarks.c_str());
@@ -1036,6 +1090,8 @@ inline void CStandAssigner::OnFunctionCall(int FunctionId, const char * sItemStr
 			return;
 		if (strcmp(icao, "OMSJ") == 0 && std::regex_search(remarks, match, std::regex(R"(\/STAND\d{1,2}[A-Z]?)")))
 			return;
+		if (strcmp(icao, "OMAA") == 0 && (std::regex_search(remarks, match, std::regex(R"(\/STAND\d{1,3})")) || std::regex_search(remarks, match, std::regex(R"(\/STANDGA)"))))
+			return;
 		remarks += "/STAND" + stand.number;
 		fpdata.SetRemarks(remarks.c_str());
 		fpdata.AmendFlightPlan();
@@ -1082,6 +1138,56 @@ inline void CStandAssigner::OnFunctionCall(int FunctionId, const char * sItemStr
 			return;
 		if (strcmp(icao, "OMSJ") == 0 && std::regex_search(remarks, match, std::regex(R"(\/STAND\d{1,2}[A-Z]?)")))
 			return;
+		if (strcmp(icao, "OMAA") == 0 && (std::regex_search(remarks, match, std::regex(R"(\/STAND\d{1,3})")) || std::regex_search(remarks, match, std::regex(R"(\/STANDGA)"))))
+			return;
+		remarks += "/STAND" + stand.number;
+		fpdata.SetRemarks(remarks.c_str());
+		fpdata.AmendFlightPlan();
+		break;
+	}
+	case TAG_FUNC_ASSIGN_ETD:
+	{
+	ETD:
+		auto icao = fp.GetFlightPlanData().GetDestination();
+		auto found = standmapping.find(icao);
+		std::unordered_map<std::string, Stand> copy;
+		if (found != standmapping.end())
+		{
+			auto found2 = found->second.find(fp.GetCallsign());
+			if (found2 != found->second.end())
+				break;
+			copy = standmapping.at(icao);
+		}
+		auto size = determineAircraftCat(fp);
+		auto standshere = standsETD.find(icao);
+		if (standshere == standsETD.end()) break;
+		auto stand = extractRandomStand(standshere->second, size, icao);
+		if (stand.number == "Z00")
+			break;
+		data.at(icao).at(stand.number).isAssigned = true;
+		std::pair<std::string, Stand> temp(fp.GetCallsign(), stand);
+		copy.insert(temp);
+		if (found == standmapping.end())
+		{
+			std::pair<std::string, std::unordered_map<std::string, Stand>> temp2(icao, copy);
+			standmapping.insert(temp2);
+		}
+		else
+			standmapping.at(icao) = copy;
+		for (auto &temp : standsGA.at(icao))
+		{
+			if (temp.number == stand.number)
+				temp.isAssigned = true;
+		}
+		auto fpdata = fp.GetFlightPlanData();
+		std::string remarks = fpdata.GetRemarks();
+		std::smatch match;
+		if (strcmp(icao, "OMDB") == 0 && std::regex_search(remarks, match, std::regex(R"(\/STAND[A-Z]\d{1,2})")))
+			return;
+		if (strcmp(icao, "OMSJ") == 0 && std::regex_search(remarks, match, std::regex(R"(\/STAND\d{1,2}[A-Z]?)")))
+			return;
+		if (strcmp(icao, "OMAA") == 0 && (std::regex_search(remarks, match, std::regex(R"(\/STAND\d{1,3})")) || std::regex_search(remarks, match, std::regex(R"(\/STANDGA)"))))
+			return;
 		remarks += "/STAND" + stand.number;
 		fpdata.SetRemarks(remarks.c_str());
 		fpdata.AmendFlightPlan();
@@ -1127,6 +1233,8 @@ inline void CStandAssigner::OnFunctionCall(int FunctionId, const char * sItemStr
 	if (strcmp(icao, "OMDB") == 0 && std::regex_search(remarks, match, std::regex(R"(\/STAND[A-Z]\d{1,2})")))
 		return;
 	if (strcmp(icao, "OMSJ") == 0 && std::regex_search(remarks, match, std::regex(R"(\/STAND\d{1,2}[A-Z]?)")))
+		return;
+	if (strcmp(icao, "OMAA") == 0 && (std::regex_search(remarks, match, std::regex(R"(\/STAND\d{1,3})")) || std::regex_search(remarks, match, std::regex(R"(\/STANDGA)"))))
 		return;
 	remarks += "/STAND" + stand.number;
 	fpdata.SetRemarks(remarks.c_str());
@@ -1184,6 +1292,14 @@ void CStandAssigner::cleanupStands()
 				if (code == "UAE")
 				{
 					for (auto &temp : standsUAE.at(airport))
+					{
+						if (temp.number == it.second.number)
+							temp.isAssigned = false;
+					}
+				}
+				if (code == "ETD")
+				{
+					for (auto &temp : standsETD.at(airport))
 					{
 						if (temp.number == it.second.number)
 							temp.isAssigned = false;
