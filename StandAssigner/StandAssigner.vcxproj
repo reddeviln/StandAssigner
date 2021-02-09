@@ -217,7 +217,10 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="OMDB.csv" />
+    <None Include="I:\Documents\Euroscope\OMAE\OMAE\Plugins\StandAssigner\OMDB\CallsignMapOMDB.csv" />
+    <None Include="I:\Documents\Euroscope\OMAE\OMAE\Plugins\StandAssigner\OMDB\OMDB.csv" />
+    <None Include="I:\Documents\Euroscope\OMAE\OMAE\Plugins\StandAssigner\OMSJ\CallsignMapOMSJ.csv" />
+    <None Include="I:\Documents\Euroscope\OMAE\OMAE\Plugins\StandAssigner\OMSJ\OMSJ.csv" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

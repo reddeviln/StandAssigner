@@ -46,6 +46,17 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="OMDB.csv" />
+    <None Include="I:\Documents\Euroscope\OMAE\OMAE\Plugins\StandAssigner\OMDB\CallsignMapOMDB.csv">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="I:\Documents\Euroscope\OMAE\OMAE\Plugins\StandAssigner\OMDB\OMDB.csv">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="I:\Documents\Euroscope\OMAE\OMAE\Plugins\StandAssigner\OMSJ\CallsignMapOMSJ.csv">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="I:\Documents\Euroscope\OMAE\OMAE\Plugins\StandAssigner\OMSJ\OMSJ.csv">
+      <Filter>Source Files</Filter>
+    </None>
   </ItemGroup>
 </Project>
